@@ -10,7 +10,7 @@ import (
 type metadata struct {
 	// Whether the CRD was found. Typically Spyglass seems to have issues displaying non-strings, so
 	// this will be written out as a string despite the native JSON boolean type.
-	FoundCRD bool `json:"found-crd,string"`
+	CleanupCompleted bool `json:"cleanup-completed,string"`
 }
 
 // Instance is the singleton instance of metadata.
