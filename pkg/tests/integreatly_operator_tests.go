@@ -85,14 +85,14 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 			},
 		}
 
-		_, err = clientset.CoreV1().Pods("kube-system").Create(context.TODO(), pod, metav1.CreateOptions{})
+		_, err = clientset.CoreV1().Pods("redhat-rhmi-operator").Create(context.TODO(), pod, metav1.CreateOptions{})
 
 		// watch cluster-service pod for completion
 		timeout := 35 * time.Minute
 		delay := 30 * time.Second
 
 		err = wait.Poll(timeout, delay, func() (done bool, err error) {
-			pod, err = clientset.CoreV1().Pods("kube-system").Get(context.TODO(), "cluster-service", metav1.GetOptions{})
+			pod, err = clientset.CoreV1().Pods("redhat-rhmi-operator").Get(context.TODO(), "integreatly-operator-cluster-service", metav1.GetOptions{})
 			if err != nil {
 				return false, nil
 			}

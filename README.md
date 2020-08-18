@@ -19,12 +19,12 @@ podman push <path/to/repository>/integreatly-operator-cleanup-harness
 Run the image with `cluster-admin` permissions.
 Set the cluster role bindings.
 ```
-kubectl create clusterrolebinding --user system:serviceaccount:kube-system:default namespace-cluster-admin --clusterrole cluster-admin
+kubectl create clusterrolebinding --user system:serviceaccount:redhat-rhmi-operator:default namespace-cluster-admin --clusterrole cluster-admin
 ```
-Deploy the image into the `kube-system` namespace with the `cleanup` arg.
+Deploy the image into the `redhat-rhmi-operator` namespace with the `cleanup` arg.
 `dry-run` is optional and will run teh cluster-service in a dry run mode.
 ```
-oc run -n kube-system --restart=Never --image <path/to/repository>/integreatly-operator-cleanup-harness -- integreatly-operator-cleanup-harness cleanup
+oc run -n redhat-rhmi-operator --restart=Never --image <path/to/repository>/integreatly-operator-cleanup-harness -- integreatly-operator-cleanup-harness cleanup
 ```
 
 ## On Cluster
