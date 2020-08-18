@@ -1,19 +1,25 @@
 package tests
 
 import (
+	"context"
 	"github.com/integr8ly/integreatly-operator-test-harness/pkg/metadata"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	//buildv1 "github.com/openshift/client-go/build/clientset/versioned/typed/build/v1"
-	//buildv1 "github.com/openshift/client-go/config/clientset/versioned/clientset"
-	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"time"
+
+	//buildv1 "github.com/openshift/clientv1-go/build/clientset/versioned/typed/build/v1"
+	clientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
+	"github.com/sirupsen/logrus"
+	//v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//"k8s.io/apimachinery/pkg/util/wait"
+	//"k8s.io/clientv1-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"os"
-	"time"
+	//"time"
 )
 
 var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
@@ -33,7 +39,7 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 		}
 
 		// Creates the clientset
-		//buildClient, err := buildv1.NewForConfig(config)
+		buildClient, err := clientv1.NewForConfig(config)
 		clientset, err := kubernetes.NewForConfig(config)
 		if err != nil {
 			panic(err)
@@ -41,20 +47,21 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// get aws values
-		secret, err := clientset.CoreV1().Secrets("kube-system").Get("aws-creds", metav1.GetOptions{})
+		secret, err := clientset.CoreV1().Secrets("kube-system").Get(context.TODO(), "aws-creds", metav1.GetOptions{})
 		AWS_ACCESS_KEY_ID := string(secret.Data["aws_access_key_id"])
 		AWS_SECRET_ACCESS_KEY := string(secret.Data["aws_secret_access_key"])
 		logrus.Infof("AWS ACCESS %v", AWS_ACCESS_KEY_ID)
 		logrus.Infof("AWS SECRET %v", AWS_SECRET_ACCESS_KEY)
+		//AWS_ACCESS_KEY_ID := "42"
+		//AWS_SECRET_ACCESS_KEY := "42"
 
 		// get cluster id
 		// TODO get id, it can be found in ClusterVersion version
-		cluster_id := "a4ebf449-c3a7-4fb4-bdd1-7066efd0815d"
-		//id, err := buildClient.RESTClient().Get().Resource("ClusterVersion").Name("version").Do().Get()
-		id, err := clientset.CoordinationV1().RESTClient().Get().Resource("ClusterVersion").Name("version").Do().Get()
+		id, err := buildClient.ClusterVersions().Get(context.TODO(), "version", metav1.GetOptions{})
 
-		logrus.Info("info found == ", id)
-		logrus.Info("error found == ", err)
+		cluster_id := string(id.Spec.ClusterID)
+
+		logrus.Infof("Cluster ID %v", cluster_id)
 
 		// configure cluster-service pod args
 		container_args := []string{"cleanup", cluster_id, "--watch"}
@@ -89,14 +96,14 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 			},
 		}
 
-		_, err = clientset.CoreV1().Pods("kube-system").Create(pod)
+		_, err = clientset.CoreV1().Pods("kube-system").Create(context.TODO(), pod, metav1.CreateOptions{})
 
 		// watch cluster-service pod for completion
 		timeout := 35 * time.Minute
 		delay := 30 * time.Second
 
 		err = wait.Poll(timeout, delay, func() (done bool, err error) {
-			pod, err = clientset.CoreV1().Pods("kube-system").Get("cluster-service", metav1.GetOptions{})
+			pod, err = clientset.CoreV1().Pods("kube-system").Get(context.TODO(), "cluster-service", metav1.GetOptions{})
 			if err != nil {
 				return false, nil
 			}
