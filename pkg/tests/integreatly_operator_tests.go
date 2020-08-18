@@ -5,21 +5,15 @@ import (
 	"github.com/integr8ly/integreatly-operator-test-harness/pkg/metadata"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	"time"
-
-	//buildv1 "github.com/openshift/clientv1-go/build/clientset/versioned/typed/build/v1"
 	clientv1 "github.com/openshift/client-go/config/clientset/versioned/typed/config/v1"
 	"github.com/sirupsen/logrus"
-	//v1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//"k8s.io/apimachinery/pkg/util/wait"
-	//"k8s.io/clientv1-go/kubernetes"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"os"
-	//"time"
+	"time"
 )
 
 var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
@@ -52,15 +46,10 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 		AWS_SECRET_ACCESS_KEY := string(secret.Data["aws_secret_access_key"])
 		logrus.Infof("AWS ACCESS %v", AWS_ACCESS_KEY_ID)
 		logrus.Infof("AWS SECRET %v", AWS_SECRET_ACCESS_KEY)
-		//AWS_ACCESS_KEY_ID := "42"
-		//AWS_SECRET_ACCESS_KEY := "42"
 
 		// get cluster id
-		// TODO get id, it can be found in ClusterVersion version
 		id, err := buildClient.ClusterVersions().Get(context.TODO(), "version", metav1.GetOptions{})
-
 		cluster_id := string(id.Spec.ClusterID)
-
 		logrus.Infof("Cluster ID %v", cluster_id)
 
 		// configure cluster-service pod args
@@ -74,7 +63,7 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 		// create cluster-service pod
 		pod := &v1.Pod{
 			TypeMeta:   metav1.TypeMeta{},
-			ObjectMeta: metav1.ObjectMeta{Name: "cluster-service"},
+			ObjectMeta: metav1.ObjectMeta{Name: "integreatly-operator-cluster-service"},
 			Spec: v1.PodSpec{
 				Containers: []v1.Container{
 					{
