@@ -1,10 +1,11 @@
 # integreatly-operator-cleanup-harness
 
-This harness sets up the [cluster-service](https://github.com/integr8ly/cluster-service) image by with the required aws credentials and cluster id.
-When running this image there are two args that  can be passed in.
+This harness sets up the [cluster-service](https://github.com/integr8ly/cluster-service) image with the required aws credentials and cluster infrastructure id.
+When running this image the possible arguments are.
 
-- `cleanup` -> required to run being the cluster-service. Without this the image will exit.
-- `dry-run` -> set the cluster-service into dry run mode 
+- `dry-run` -> set the cluster-service into dry run mode. 
+The [cluster-service](https://github.com/integr8ly/cluster-service) will be use in dry run and not remove any resources from aws.
+Create namespaces are will not be cleaned up. Namespace: `redhat-rhmi-operator-cleanup-harness` 
 
 ## Building the image
 To run the image on a cluster you must build and push the image to an image repository.
@@ -16,21 +17,31 @@ podman push <path/to/repository>/integreatly-operator-cleanup-harness
 ```
 
 ## Running the image
-Run the image with `cluster-admin` permissions.
+Run the image with `cluster-admin` permissions on the `<namespace>`.
 Set the cluster role bindings.
 ```
-kubectl create clusterrolebinding --user system:serviceaccount:redhat-rhmi-operator:default namespace-cluster-admin --clusterrole cluster-admin
+kubectl create clusterrolebinding --user system:serviceaccount:<namespace>:default namespace-cluster-admin --clusterrole cluster-admin
 ```
-Deploy the image into the `redhat-rhmi-operator` namespace with the `cleanup` arg.
-`dry-run` is optional and will run teh cluster-service in a dry run mode.
+Deploy the image into the `<namespace>`.
+`dry-run` is optional and will run the cluster-service in a dry run mode.
 ```
-oc run -n redhat-rhmi-operator --restart=Never --image <path/to/repository>/integreatly-operator-cleanup-harness -- integreatly-operator-cleanup-harness cleanup
+oc run -n <namespace> --restart=Never --image <path/to/repository>/integreatly-operator-cleanup-harness -- integreatly-operator-cleanup-harness [dry-run]
 ```
 
 ## On Cluster
-On the cluster when the pod have been deployed in the `kube-system` name space.
-Two pods will be created and should run to completion without restarting.
-These pods are:
 
-- integreatly-operator-cleanup-harness
-- integreatly-operator-cluster-service
+On the cluster, in the `<namespace>` the `integreatly-operator-cleanup-harness` is deployed.
+This deployment retrieves the required values and credentials to deploy the [cluster-service](https://github.com/integr8ly/cluster-service).
+
+As the namespace for the cleanup harness may be unknown the `integreatly-operator-cleanup-harnass` creates a namespace to deploy the [cluster-service](https://github.com/integr8ly/cluster-service).
+This namespace is `redhat-rhmi-cleanup-harness` which is where the [cluster-service](https://github.com/integr8ly/cluster-service) is deployed.
+
+Under normal running of cleanup harness the `redhat-rhmi-cleanup-harness` namespace will be remove.
+With the `dry-run` flag passed this namespace will not be removed.
+
+## Values and Credentials used
+
+- AWS_ACCESS_KEY_ID -> got from the `aws-creds` secret in the `kube-system` namespace.
+- AWS_SECRET_ACCESS_KEY -> got from the `aws-creds` secret in the `kube-system` namespace.
+- Infrastructure Name -> pass as an argument from the cluster resource `type: infrastructure, name: cluster`.
+`c get infrastructure cluster -o jsonpath='{.status.infrastructureName}{"\n"}'` gives the same value that is pass in. 

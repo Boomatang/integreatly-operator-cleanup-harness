@@ -16,13 +16,18 @@ import (
 	"time"
 )
 
+const (
+	DryRun = "dry-run"
+	CleanUpNameSpace = "redhat-rhmi-operator-cleanup-harness"
+	ClusterService   = "integreatly-operator-cluster-service"
+	ClusterServiceImage = "quay.io/integreatly/cluster-service:v0.4.0"
+	Timeout = 35 * time.Minute
+	Delay = 30 * time.Second
+)
+
 var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 	defer ginkgo.GinkgoRecover()
 	args := os.Args[1:]
-	if !Contains(args, "cleanup") {
-		logrus.Info("not doing clean up phase")
-		os.Exit(0)
-	}
 
 	ginkgo.It("cleanup AWS resources using cluster-service", func() {
 
@@ -33,7 +38,7 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 		}
 
 		// Creates the clientset
-		buildClient, err := clientv1.NewForConfig(config)
+		clientV1Set, err := clientv1.NewForConfig(config)
 		clientset, err := kubernetes.NewForConfig(config)
 		if err != nil {
 			panic(err)
@@ -47,28 +52,43 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 		logrus.Infof("AWS ACCESS %v", AWS_ACCESS_KEY_ID)
 		logrus.Infof("AWS SECRET %v", AWS_SECRET_ACCESS_KEY)
 
-		// get cluster id
-		id, err := buildClient.ClusterVersions().Get(context.TODO(), "version", metav1.GetOptions{})
-		cluster_id := string(id.Spec.ClusterID)
-		logrus.Infof("Cluster ID %v", cluster_id)
+		// get cluster infrastructure
+		infrastructure, err := clientV1Set.Infrastructures().Get(context.TODO(), "cluster", metav1.GetOptions{})
+		infrastructureName := string(infrastructure.Status.InfrastructureName)
+		logrus.Infof("cluster infrastructure ID %v", infrastructureName)
 
 		// configure cluster-service pod args
-		container_args := []string{"cleanup", cluster_id, "--watch"}
+		container_args := []string{"cleanup", infrastructureName, "--watch"}
 
-		if Contains(args, "dry-run") {
+		if Contains(args, DryRun) {
 			logrus.Info("running cluster-service as dry-run")
 			container_args = append(container_args, "--dry-run=true")
+		}
+
+		// create a namespace for the cluster service to run in
+		CreatedNamespace := v1.Namespace{
+			TypeMeta:   metav1.TypeMeta{
+				Kind:       "Namespace",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: CleanUpNameSpace,
+			},
+		}
+		_, err = clientset.CoreV1().Namespaces().Create(context.TODO(), &CreatedNamespace, metav1.CreateOptions{})
+		if err != nil {
+			panic(err)
 		}
 
 		// create cluster-service pod
 		pod := &v1.Pod{
 			TypeMeta:   metav1.TypeMeta{},
-			ObjectMeta: metav1.ObjectMeta{Name: "integreatly-operator-cluster-service"},
+			ObjectMeta: metav1.ObjectMeta{Name: ClusterService},
 			Spec: v1.PodSpec{
 				Containers: []v1.Container{
 					{
 						Name:  "cluster-service",
-						Image: "quay.io/integreatly/cluster-service:v0.4.0",
+						Image: ClusterServiceImage,
 						Args:  container_args,
 						Env: []v1.EnvVar{
 							{
@@ -85,20 +105,18 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 			},
 		}
 
-		_, err = clientset.CoreV1().Pods("redhat-rhmi-operator").Create(context.TODO(), pod, metav1.CreateOptions{})
+		logrus.Infof("deploy %v to %v", pod.Name, CleanUpNameSpace)
+		_, err = clientset.CoreV1().Pods(CleanUpNameSpace).Create(context.TODO(), pod, metav1.CreateOptions{})
 
 		// watch cluster-service pod for completion
-		timeout := 35 * time.Minute
-		delay := 30 * time.Second
-
-		err = wait.Poll(timeout, delay, func() (done bool, err error) {
-			pod, err = clientset.CoreV1().Pods("redhat-rhmi-operator").Get(context.TODO(), "integreatly-operator-cluster-service", metav1.GetOptions{})
+		err = wait.Poll(Timeout, Delay, func() (done bool, err error) {
+			pod, err = clientset.CoreV1().Pods(CleanUpNameSpace).Get(context.TODO(), ClusterService, metav1.GetOptions{})
 			if err != nil {
 				return false, nil
 			}
 
 			if pod.Status.Phase == "Succeeded" {
-				logrus.Info("pod status is completed")
+				logrus.Infof("pod %v status is completed", pod.Name)
 				return true, nil
 			}
 			return false, nil
@@ -109,6 +127,20 @@ var _ = ginkgo.Describe("Integreatly Operator Cleanup", func() {
 			metadata.Instance.CleanupCompleted = false
 		} else {
 			metadata.Instance.CleanupCompleted = true
+		}
+
+		// remove created namespace
+		if !Contains(args, DryRun) {
+			logrus.Infof("cleaning up namespace: %v", CleanUpNameSpace)
+			err = clientset.CoreV1().Namespaces().Delete(context.TODO(), CleanUpNameSpace, metav1.DeleteOptions{})
+			if err != nil {
+				metadata.Instance.NameSpaceCleanUp = false
+			} else {
+				metadata.Instance.NameSpaceCleanUp = true
+			}
+		} else {
+			logrus.Infof("running in dry run mode, namespace %v not cleaned up", CleanUpNameSpace)
+			metadata.Instance.NameSpaceCleanUp = false
 		}
 
 		Expect(err).NotTo(HaveOccurred())
