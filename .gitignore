@@ -1,2 +1,5 @@
 # Ignore the test binary
 integreatly-operator-test-harness.test
+
+# Ignore ide settings
+.idea
