@@ -5,7 +5,7 @@ When running this image the possible arguments are.
 
 - `dry-run` -> set the cluster-service into dry run mode. 
 The [cluster-service](https://github.com/integr8ly/cluster-service) will be use in dry run and not remove any resources from aws.
-Create namespaces are will not be cleaned up. Namespace: `redhat-rhmi-operator-cleanup-harness` 
+Created namespaces will not be cleaned up. Namespace: `redhat-rhmi-operator-cleanup-harness` 
 
 ## Building the image
 To run the image on a cluster you must build and push the image to an image repository.
@@ -44,4 +44,4 @@ With the `dry-run` flag passed this namespace will not be removed.
 - AWS_ACCESS_KEY_ID -> got from the `aws-creds` secret in the `kube-system` namespace.
 - AWS_SECRET_ACCESS_KEY -> got from the `aws-creds` secret in the `kube-system` namespace.
 - Infrastructure Name -> pass as an argument from the cluster resource `type: infrastructure, name: cluster`.
-`c get infrastructure cluster -o jsonpath='{.status.infrastructureName}{"\n"}'` gives the same value that is pass in. 
+`oc get infrastructure cluster -o jsonpath='{.status.infrastructureName}{"\n"}'` gives the same value that is pass in. 

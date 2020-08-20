@@ -1,5 +1,5 @@
 DIR := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
-OUT_FILE := "$(DIR)integreatly-operator-test-harness"
+OUT_FILE := "$(DIR)integreatly-operator-cleanup-harness"
 
 build:
 	go mod vendor

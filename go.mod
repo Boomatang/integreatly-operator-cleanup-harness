@@ -1,4 +1,4 @@
-module github.com/integr8ly/integreatly-operator-test-harness
+module github.com/integr8ly/integreatly-operator-cleanup-harness
 
 go 1.13
 
